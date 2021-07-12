@@ -84,4 +84,50 @@ Please ensure you deploy **all** the below services in the same region.
 
 17. You can now close the S3 Console
 
+#### AWS IAM
+
+Before our AWS services can interact with one another, we must setup the right roles and policies for them to do so.
+
+1. Login to your AWS account
+2. Using the search navigation, or the services summary page, navigate to the IAM console
+3. In the Navigation pane, select *Policies*, then *Create policy*
+4. Use the Visual editor to create the policy; under Service select *S3*
+5. Under Actions, select *All S3 actions*
+6. Under Resources, select *bucket - Add ARN*
+7. In the window that pops up, paste the ARN copied from the HTML object earlier, but replace the key name from the ARN with an asterisk (example : arn:aws:s3:::bucket1/medialive-html5/*)
+8. Select *Save changes* to close this window
+9. Leave *Request conditions* as default and select *Next:Tags*
+10. Enter tags if required for your corporate policy, else select *Next:Review*
+11. Give the policy a name, for example : AccessToS3HTML5
+12. Optionally, give the policy a description to further identify the policy, for example: Custom policy to access specific MediaLive HTML Pages on S3 bucket ‘bucket1’
+13. Select *Create policy*
+14. In the Navigation pane, select *Role*, then *Create role*
+15. Under the heading *Or select a service to view its use cases common*, select *Lambda*, then *Next:Permissions*
+16. Type " LambdaBasicExecutionRole " , then select the checkmark next to the result. This policy allows our Lambda function to write to Amazon CloudWatch logs, which is useful for debugging
+17. Clear the search bar and then type the name of the policy created just earlier “ AccessToS3HTML5 ”, then select the checkmark next to the result
+18. Select *Next:Tags*
+19. Enter tags if required for your corporate policy, else select *Next:Review*
+20. Give the role a name, for example : AWSLambdaAccessToS3HTML
+21. Optionally, give the role a description to further identify the role, for example: AWS Lambda role to access S3 bucket for MediaLive HTML5 Graphics Overlay workflow
+22. Select *Create role*
+23. You can now close the IAM Console
+
+#### AWS Lambda
+
+1. Login to your AWS account
+2. Using the search navigation, or the services summary page, navigate to the Lambda console
+3. From the navigation pane on the right, select *Functions*, then select *Create function*
+4. Under Create function, select *Author from scratch*
+5. Name the function : medialive_html5_api_handler
+6. Under runtime, select Python 3.8
+7. Under Permissions, expand *Change default execution role*
+8. Under Execution role, select *Use an existing role*, select the dropdown and search for the AWS Lambda role you made earlier (AWSLambdaAccessToS3HTML)
+9. Select *Create function*
+10. In the Function code block, select the *Upload from* drop-down menu and browse to [this Lambda function](lambda/medialive_html5_api_handler.zip)
+11. Import the zip file!
+12. In the Configuration tab, select *Environment Variables*
+13. Edit the environment variables for BUCKET and DATA_KEY to match your newly created bucket and key path for the data.json file you uploaded earlier. The S3 URI looks like this: s3://cunsco-bucket1/medialive-html5/data.json
+   1. The BUCKET is the first part of the URI : cunsco-bucket1
+   2. The DATA_KEY is the rest: medialive-html5/data.json
+14. You can now close the Lambda Console
 
