@@ -67,10 +67,10 @@ Please ensure you deploy **all** the below services in the same region.
 7. Select your bucket from the bucket summary, then select *Create folder*
 8. Name your folder : medialive-html5 (if you name it something else, take note as it will affect our IAM policy later)
 9. Inside the newly created folder, upload the HTML files:
-    1. html5_functions.js [link]
-    2. html5_page.html [link]
-    3. html5_style.css [link]
-    4. data.json [link]
+    1. html5_functions.js [link](html_pages/html5_functions.js)
+    2. html5_page.html [link](html_pages/html5_page.html)
+    3. html5_style.css [link](html_pages/html5_style.css)
+    4. data.json [link](html_pages/data.json)
 10. Select the checkmark next to each of the newly created files, then select the *Actions* drop-down menu and select *Make public*
 11. After the task completes successfully, select the *Close* button to go back to the object view
 12. Now select on the hyperlink of the json file, data.json
