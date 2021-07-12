@@ -131,3 +131,22 @@ Before our AWS services can interact with one another, we must setup the right r
    2. The DATA_KEY is the rest: medialive-html5/data.json
 14. You can now close the Lambda Console
 
+#### API Gateway
+
+1. Login to your AWS account
+2. Using the search navigation, or the services summary page, navigate to the API Gateway console
+3. Select *Create API*
+4. Under API Type, select *REST API - Import*
+5. In the Import from Swagger or Open API3 section, select the *Select Swagger File* button and upload [this API Gateway template](api_gateway/html5_data_ingest-v1-swagger-apigateway.json)
+6. Select the *Import* button
+7. Under Resources, select the *Any* method, then select the *Integration Request* box
+8. Select the edit pencil next to *Lambda Region*, and select your Lambda region, then select the tick box to the right of the field
+9. Select the edit pencil next to *Lambda Function*, delete the text in this field and start typing the name of your Lambda function until it auto-populates, then select the tick box to the right of the field
+10. Now select the 'root slash' / under the Resources pane, then select the *Actions* button, then *Deploy API*
+11. In the popup box that appears, select a new deployment stage, and give it name *v1*, then select the *Deploy* button
+12. Retrieve your Invoke URL by selecting the *Stages* pane, then expand your v1 stage until you see methods under the /{proxy+} Resource, select the GET method, and note the Invoke URL that appears. It will look something like:
+
+| Invoke URL: https://12345abcde.execute-api.us-west-2.amazonaws.com/v1/{proxy+} |
+|---|
+
+13. You can now close the API Gateway console
