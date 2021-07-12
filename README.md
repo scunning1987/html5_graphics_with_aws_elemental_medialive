@@ -1,4 +1,4 @@
-# HTML5 Graphics With AWSS Elemental MediaLive
+# HTML5 Graphics With AWS Elemental MediaLive
 ## Overview
 These instructions and templates outline how to deploy a solution that utilizes AWS Elemental MediaLive's HTML5 graphics functionality to display metric data received via an API call.
 
