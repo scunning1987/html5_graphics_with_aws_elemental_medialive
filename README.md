@@ -48,6 +48,22 @@ In order to complete this deployment in your environment. Make sure you have ach
 * AWS Lambda
 * Amazon API Gateway
 
+### Deployment Instructions - Via CloudFormation
+1. Login to your AWS account
+2. Using the search navigation, or the services summary page, navigate to the CloudFormation console
+3. From the CloudFormation dashboard home, select *Create Stack - with new resources*
+4. Select *Template is ready* then *Upload a template file*
+5. Browse to [this CloudFormation template](cloudformation/html5_graphics_with_aws_elemental_medialive.yaml) after you save locally
+6. Select *Next*
+7. Give the stack a name, a deployment name (these can be the same), and HTML Path location. The path location is just a relative url where the HTML pages will be written to, ie. `medialive/html`
+8. Select *Next*
+9. The stack options page has parameters that are optional for you to complete, you can skip and select *Next*
+10. Scroll to the bottom of the review page, acknowledge that CloudFormation is able to create IAM roles/policies and select *Create stack*
+
+After the stack creation is completed, you can go to the Outputs tab of the stack summary to find your APIEndpointURL and HTMLPage location
+
+For further instructions on how to use this deployment, go to the [Testing the System](#Testing the System) section below
+
 ### Deployment Instructions - Via the AWS Console
 
 Please ensure you deploy **all** the below services in the same region.

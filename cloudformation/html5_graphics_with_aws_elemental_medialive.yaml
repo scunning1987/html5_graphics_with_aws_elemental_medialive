@@ -122,10 +122,10 @@ Resources:
         - Key: DeploymentName
           Value: !Ref DeploymentName
     DependsOn:
-    - S3Bucket
-    - LambdaRole
-    - FileCopier
-    - FileMover
+      - S3Bucket
+      - LambdaRole
+      - FileCopier
+      - FileMover
 
   FileCopier:
     Type: AWS::Lambda::Function
@@ -244,19 +244,31 @@ Resources:
                           content_type = "application/zip"
                           s3_key = path + file_name
 
-                      # Upload to S3
-                      try:
-                          s3_response = s3.put_object(Body=get_response.data, Bucket=bucket, Key=s3_key,ContentType=content_type, ACL='public-read', CacheControl='no-cache')
-                          LOGGER.info("Uploaded %s to S3, got response : %s " % (file_name,s3_response) )
-                      except Exception as e:
-                          LOGGER.error("Unable to upload %s to S3, got exception: %s" % (file_name,e))
-                          responseData['Status'] = "Unable to upload %s to S3, got exception: %s" % (file_name,e)
-                          cfnresponse.send(event, context, "FAILED",responseData)
-                          raise Exception("Unable to upload %s to S3, got exception: %s" % (file_name,e))
+                      # "RequestType": "Create"
+                      if event['RequestType'] == "Create" or event['RequestType'] == "Update":
+                          # Upload to S3
+                          try:
+                              s3_response = s3.put_object(Body=get_response.data, Bucket=bucket, Key=s3_key,ContentType=content_type, ACL='public-read', CacheControl='no-cache')
+                              LOGGER.info("Uploaded %s to S3, got response : %s " % (file_name,s3_response) )
+                          except Exception as e:
+                              LOGGER.error("Unable to upload %s to S3, got exception: %s" % (file_name,e))
+                              responseData['Status'] = "Unable to upload %s to S3, got exception: %s" % (file_name,e)
+                              cfnresponse.send(event, context, "FAILED",responseData)
+                              raise Exception("Unable to upload %s to S3, got exception: %s" % (file_name,e))
+
+                      else: # DELETE
+                          try:
+                              s3_response = s3.delete_object(Bucket=bucket,Key=s3_key)
+                              LOGGER.info("Deleted %s from S3, got response : %s " % (file_name,s3_response) )
+                          except Exception as e:
+                              LOGGER.error("Unable to delete %s from S3, got exception: %s" % (file_name,e))
+                              responseData['Status'] = "Unable to delete %s from S3, got exception: %s" % (file_name,e)
+                              cfnresponse.send(event, context, "FAILED",responseData)
 
               responseData['Status'] = "SUCCESS"
               cfnresponse.send(event, context, "SUCCESS",responseData)
               return "SUCCESS"
+
 
 
       Environment:
@@ -363,4 +375,3 @@ Outputs:
   HTMLPage:
     Description: URL of the HTML page for MediaLive to load
     Value: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/${HTMLPath}html5_page.html
-
