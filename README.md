@@ -62,7 +62,7 @@ In order to complete this deployment in your environment. Make sure you have ach
 
 After the stack creation is completed, you can go to the Outputs tab of the stack summary to find your APIEndpointURL and HTMLPage location
 
-For further instructions on how to use this deployment, go to the [Testing the System](#Testing%20the%20System) section below
+For further instructions on how to use this deployment, go to the [Testing the System](#testing-the-system) section below
 
 ### Deployment Instructions - Via the AWS Console
 
