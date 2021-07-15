@@ -1,0 +1,366 @@
+#### Title : HTML5 Motion Graphics With AWS Elemental MediaLive
+#### Author : Scott Cunningham
+#### 
+####
+## Parameters - User Input
+Parameters:
+  DeploymentName:
+    Description: This is the name of the deployment
+    Type: String
+    MinLength: 1
+
+  HTMLPath:
+    Description: This is the path where you would like the HTML pages stored
+    Type: String
+    AllowedPattern: "^(^[a-z,A-Z,0-9].*/$)|(^$)"
+    ConstraintDescription: path can't start with a slash; it must end with a slash or be empty.
+
+## Resources
+Resources:
+  #################
+  ## S3
+  #################
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: DeploymentName
+          Value: !Ref DeploymentName
+
+  #################
+  ## IAM
+  #################
+  ## IAM Role
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${DeploymentName}-medialive-html5-api-handler
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Tags:
+        - Key: DeploymentName
+          Value: !Ref DeploymentName
+
+  ## IAM Policy
+  S3AccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref LambdaRole
+      PolicyName: !Sub ${DeploymentName}-s3-access
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - !Sub arn:aws:s3:::${S3Bucket}/*
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - !Sub arn:aws:s3:::${S3Bucket}
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+            Resource:
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource:
+              - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*
+    DependsOn: S3Bucket
+
+  #################
+  ## Custom Resource
+  #################
+
+  FileMover:
+    Type: Custom::LambdaInvokerToMoveFiles
+    Properties:
+      ServiceToken: !GetAtt FileCopier.Arn
+      Region: !Ref 'AWS::Region'
+    DependsOn:
+      - S3Bucket
+      - LambdaRole
+
+  #################
+  ## Lambda
+  #################
+  MediaLiveHTML5APIHandler:
+    Type: AWS::Lambda::Function
+    Properties:
+      #FunctionName: !Sub ${DeploymentName}-medialive-html5-api-handler
+      Description: MediaLive HTML5 API Handler
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.8
+      Handler: index.lambda_handler
+      Timeout: 10
+      MemorySize: 10240
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !Sub ${HTMLPath}medialive_html5_api_handler.zip
+      Environment:
+        Variables:
+          BUCKET: !Ref S3Bucket
+          DATA_KEY: !Sub ${HTMLPath}data.json
+      Tags:
+        - Key: DeploymentName
+          Value: !Ref DeploymentName
+    DependsOn:
+    - S3Bucket
+    - LambdaRole
+    - FileCopier
+    - FileMover
+
+  FileCopier:
+    Type: AWS::Lambda::Function
+    Properties:
+      #FunctionName: !Sub ${DeploymentName}-medialive-html5-api-handler
+      Description: Lambda function to copy html pages to destination bucket
+      Role: !GetAtt LambdaRole.Arn
+      Runtime: python3.8
+      Handler: index.lambda_handler
+      Timeout: 20
+      MemorySize: 10240
+      Code:
+        ZipFile: |
+          '''
+          Copyright (c) 2021 Scott Cunningham
+
+          Permission is hereby granted, free of charge, to any person obtaining a copy
+          of this software and associated documentation files (the "Software"), to deal
+          in the Software without restriction, including without limitation the rights
+          to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+          copies of the Software, and to permit persons to whom the Software is
+          furnished to do so, subject to the following conditions:
+
+          The above copyright notice and this permission notice shall be included in all
+          copies or substantial portions of the Software.
+
+          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+          IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+          FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+          AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+          LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+          OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+          SOFTWARE.
+
+          Summary: This script is a custom resource to place the HTML pages and Lambda code into the destination bucket.
+
+          Original Author: Scott Cunningham
+          '''
+
+          import json
+          import logging
+          import boto3
+          import os
+          import urllib3
+          import cfnresponse
+
+          LOGGER = logging.getLogger()
+          LOGGER.setLevel(logging.INFO)
+          MANIFESTMODIFY="True"
+
+          def lambda_handler(event, context):
+
+              ## Log the incoming event
+              LOGGER.info("Event : %s " % (event))
+
+              ## Create Response Data Dictionary for the CloudFormationn response
+              responseData = dict()
+
+              ## Initialize S3 boto3 client
+              s3 = boto3.client('s3')
+
+              # Create urllib3 pool manager
+              http = urllib3.PoolManager()
+
+              # environment variables
+              bucket = os.environ['BUCKET']
+              path = os.environ['HTMLPATH']
+
+              # HTML URL's for web pages on github
+              data_json = "https://raw.githubusercontent.com/scunning1987/html5_graphics_with_aws_elemental_medialive/main/html_pages/data.json"
+              html5_functions = "https://raw.githubusercontent.com/scunning1987/html5_graphics_with_aws_elemental_medialive/main/html_pages/html5_functions.js"
+              html5_page = "https://raw.githubusercontent.com/scunning1987/html5_graphics_with_aws_elemental_medialive/main/html_pages/html5_page.html"
+              html5_style = "https://raw.githubusercontent.com/scunning1987/html5_graphics_with_aws_elemental_medialive/main/html_pages/html5_style.css"
+
+              # Lambda ZIP URL on github
+              medialive_html5_api_handler = "https://raw.githubusercontent.com/scunning1987/html5_graphics_with_aws_elemental_medialive/main/lambda/medialive_html5_api_handler.zip"
+
+              files = []
+              files.clear()
+              files.append(data_json)
+              files.append(html5_functions)
+              files.append(html5_page)
+              files.append(html5_style)
+              files.append(medialive_html5_api_handler)
+
+              LOGGER.info("Files to transfer to S3: %s " % (files))
+
+              for file in files:
+
+                  # Get the file from GitHub
+                  get_response = http.request('GET', file)
+
+                  if get_response.status != 200:
+                      # Exit the script with errors
+                      responseData['Status'] = "Unable to get file from location : %s " % (file)
+                      cfnresponse.send(event, context, "FAILED",responseData)
+                      raise Exception("Unable to get file from location : %s " % (file))
+                  else:
+                      # Continue and upload to S3
+                      file_name = file.rsplit("/",1)[1]
+                      # bucket
+                      # path
+                      s3_key = path + file_name
+                      LOGGER.info("Now uploading %s to S3, Bucket: %s , path: %s" % (file_name,bucket,path))
+
+                      content_type = ""
+                      if ".html" in file_name:
+                          content_type = "text/html"
+                      elif ".css" in file_name:
+                          content_type = "text/css"
+                      elif ".js" in file_name:
+                          content_type = "text/javascript"
+                      elif "data.json" in file_name:
+                          content_type = "application/json"
+                      else: # this is the zip
+                          content_type = "application/zip"
+                          s3_key = path + file_name
+
+                      # Upload to S3
+                      try:
+                          s3_response = s3.put_object(Body=get_response.data, Bucket=bucket, Key=s3_key,ContentType=content_type, ACL='public-read', CacheControl='no-cache')
+                          LOGGER.info("Uploaded %s to S3, got response : %s " % (file_name,s3_response) )
+                      except Exception as e:
+                          LOGGER.error("Unable to upload %s to S3, got exception: %s" % (file_name,e))
+                          responseData['Status'] = "Unable to upload %s to S3, got exception: %s" % (file_name,e)
+                          cfnresponse.send(event, context, "FAILED",responseData)
+                          raise Exception("Unable to upload %s to S3, got exception: %s" % (file_name,e))
+
+              responseData['Status'] = "SUCCESS"
+              cfnresponse.send(event, context, "SUCCESS",responseData)
+              return "SUCCESS"
+
+
+      Environment:
+        Variables:
+          BUCKET: !Ref S3Bucket
+          HTMLPATH: !Sub ${HTMLPath}
+      Tags:
+        - Key: DeploymentName
+          Value: !Ref DeploymentName
+    DependsOn:
+      - S3Bucket
+      - LambdaRole
+      - S3AccessPolicy
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt MediaLiveHTML5APIHandler.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+    DependsOn:
+      - MediaLiveHTML5APIHandler
+
+  #################
+  ## API Gateway
+  #################
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub ${DeploymentName}-html5-api-handler
+      Description: !Sub API Handler [${DeploymentName}]
+      Tags:
+        - Key: DeploymentName
+          Value: !Ref DeploymentName
+
+  ProxyPlusResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: '{proxy+}'
+      RestApiId: !Ref ApiGateway
+
+  AnyMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      Integration:
+        #Credentials: !GetAtt ApiGatewayRole.Arn
+        IntegrationHttpMethod: POST
+        IntegrationResponses:
+          - StatusCode: '200'
+        Type: AWS_PROXY
+        Uri: !Join
+          - ''
+          - - 'arn:aws:apigateway:'
+            - !Ref 'AWS::Region'
+            - :lambda:path/2015-03-31/functions/
+            - !GetAtt MediaLiveHTML5APIHandler.Arn
+            - /invocations
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: !Ref EmptyApiModel
+      ResourceId: !Ref ProxyPlusResource
+      RestApiId: !Ref ApiGateway
+
+  EmptyApiModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      ContentType: application/json
+      Description: This is a default empty schema model
+      RestApiId: !Ref ApiGateway
+      Schema: {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "Empty Schema",
+        "type": "object"
+      }
+
+  Deployment:
+    DependsOn:
+      - AnyMethod
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      Description: Production Deployment of Api Endpoint
+      RestApiId: !Ref ApiGateway
+
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref Deployment
+      RestApiId: !Ref ApiGateway
+      StageName: v1
+
+#################################
+# Outputs
+#################################
+
+Outputs:
+  ApiEndpointUrl:
+    Description: Api Endpoint URL
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiStage}/newdata
+
+  HTMLPage:
+    Description: URL of the HTML page for MediaLive to load
+    Value: !Sub https://${S3Bucket}.s3.${AWS::Region}.amazonaws.com/${HTMLPath}html5_page.html
+
