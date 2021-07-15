@@ -455,7 +455,7 @@ Your metric data will appear in a table that is built dynamically based on the n
 
 ### Using the MediaLive Scheduling feature to trigger the overlay
 
-Follow the instructions in [this blog post](https://aws.amazon.com/blogs/media/awse-enhance-live-stream-html5-motion-graphics/), which outlines how to use MediaLive scheduling functionality to enable/disable the motion graphics overlay
+Follow the instructions in [this blog post](https://aws.amazon.com/blogs/media/awse-enhance-live-stream-html5-motion-graphics/), which outlines how to use MediaLive scheduling functionality to enable/disable the motion graphics overlay. You will need your html page URL for this part...
 
 ## Securing the Deployment
 
